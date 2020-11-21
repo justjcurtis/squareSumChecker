@@ -1,5 +1,5 @@
 const fs = require("fs");
-const cliProgress = require('cli-progress');
+const cliProgress = require("cli-progress");
 let graph = [undefined];
 let lastPath = [];
 let solutions = [];
@@ -27,7 +27,7 @@ function findPath(_graph) {
     // recursively try every entrypoint
     for (var i = 1, len = _graph.length - 1; i < len; i++) {
         var resultPath = recursePath(_graph, [i]);
-        if(resultPath != undefined){
+        if (resultPath != undefined) {
             return resultPath;
         }
     }
@@ -60,6 +60,12 @@ function recursePath(_graph, _currentPath) {
     return undefined;
 }
 
+function addVertex(_graph) {
+    _graph.push([]);
+    _graph = buildConnections(_graph.slice(0));
+    return _graph;
+}
+
 function buildConnections(_graph) {
     for (var i = 1, len = _graph.length - 1; i < len; i++) {
         if (isSquare(i + len)) {
@@ -71,12 +77,7 @@ function buildConnections(_graph) {
 }
 
 function nextSearch(_graph) {
-    var untouched = _graph.length - 1;
-    _graph.push([]);
-    if (_graph.length < 3) {
-        return [_graph, undefined];
-    }
-    _graph = buildConnections(_graph.slice(0));
+    _graph =  addVertex(_graph.slice(0));
     var path = findPath(_graph.slice(0));
 
     return [_graph, path];
@@ -84,32 +85,31 @@ function nextSearch(_graph) {
 
 function performSearch(max = undefined, _start = undefined) {
     const pb = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
-    if(max != undefined){
+    if (max != undefined) {
         pb.start(max, 0);
     }
-    if(_start != undefined){
-        for(var i = 0; i < _start-1; i++){
-            graph.push([])
-            graph = buildConnections(graph.slice(0));
-            pb.update(i+1);
+    if (_start != undefined) {
+        for (var i = 0; i < _start - 1; i++) {
+            graph = addVertex(graph.slice(0))
+            pb.update(i + 1);
         }
     }
     let start = millis();
     for (let i = _start == undefined ? 1 : _start; max == undefined || i <= max; i++) {
         let [g, p] = nextSearch(graph.slice(0));
         graph = g.slice(0);
-        if(p != undefined){
+        if (p != undefined) {
             lastPath = p;
             solutions.push(i);
         }
-        if(max != undefined){
+        if (max != undefined) {
             pb.update(i);
         }
     }
     let end = millis();
     pb.stop();
     console.log(`finished search to ${max} in ${seconds(start, end)}s`);
-    console.log(`solutions found for ${solutions}`)
+    console.log(`solutions found for ${solutions}`);
 }
 
 performSearch(40, 15);
