@@ -1,8 +1,11 @@
 const fs = require("fs");
 const cliProgress = require("cli-progress");
-let graph = [undefined];
+const Graph = require("./lib/models/graph");
+
+var graph = new Graph();
 let lastPath = [];
 let solutions = [];
+let lastEntryPoints = [];
 
 function millis() {
     return Date.now();
@@ -12,21 +15,24 @@ function seconds(start, end) {
     return Math.round((end - start) / 10) / 100;
 }
 
-function isSquare(n) {
-    for (var i = 0; ; i++) {
-        var product = i * i;
-        if (product === n) {
-            return true;
-        } else if (product > n) {
-            return false;
+function findPath() {
+    // try last 10 sucessful entrypoints
+    for (let e = lastEntryPoints.length - 1; e >= 0; e--) {
+        var ep = lastEntryPoints[e];
+        var re = recursePath(graph, [ep]);
+        if (re != undefined) {
+            return re;
         }
     }
-}
 
-function findPath(_graph) {
+    // get sorted entry points for full search
+    var eps = graph.vertices.slice(0).sort((a, b) => {
+        return b.q - a.q;
+    });
+
     // recursively try every entrypoint
-    for (var i = 1, len = _graph.length - 1; i < len; i++) {
-        var resultPath = recursePath(_graph, [i]);
+    for (var i = 0; i < eps.length - 1; i++) {
+        var resultPath = recursePath(graph, [eps[i].val]);
         if (resultPath != undefined) {
             return resultPath;
         }
@@ -34,13 +40,17 @@ function findPath(_graph) {
     return undefined;
 }
 
-function recursePath(_graph, _currentPath) {
-    if (_currentPath.length == _graph.length - 1) {
+function recursePath(graph, _currentPath) {
+    if (_currentPath.length == graph.vertices.length) {
         return _currentPath;
     }
-    var possibleConnections = _graph[_currentPath[_currentPath.length - 1]].filter((con) => {
-        return !_currentPath.includes(con);
-    });
+    var possibleConnections = graph.vertices[_currentPath[_currentPath.length - 1]].connections
+        .filter((con) => {
+            return !_currentPath.includes(con.c);
+        })
+        .sort((a, b) => {
+            return b.q - a.q;
+        });
     if (possibleConnections.length == 0) {
         return undefined;
     }
@@ -48,9 +58,9 @@ function recursePath(_graph, _currentPath) {
     for (var i = 0; i < possibleConnections.length; i++) {
         var next = possibleConnections[i];
         var newPath = _currentPath.slice(0);
-        newPath.push(next);
+        newPath.push(next.c);
 
-        var resultPath = recursePath(_graph, newPath);
+        var resultPath = recursePath(graph, newPath);
 
         if (resultPath != undefined) {
             return resultPath;
@@ -60,27 +70,9 @@ function recursePath(_graph, _currentPath) {
     return undefined;
 }
 
-function addVertex(_graph) {
-    _graph.push([]);
-    _graph = buildConnections(_graph.slice(0));
-    return _graph;
-}
-
-function buildConnections(_graph) {
-    for (var i = 1, len = _graph.length - 1; i < len; i++) {
-        if (isSquare(i + len)) {
-            _graph[i].push(len);
-            _graph[len].push(i);
-        }
-    }
-    return _graph;
-}
-
-function nextSearch(_graph) {
-    _graph =  addVertex(_graph.slice(0));
-    var path = findPath(_graph.slice(0));
-
-    return [_graph, path];
+function nextSearch() {
+    var _path = findPath();
+    return _path;
 }
 
 function performSearch(max = undefined, _start = undefined) {
@@ -90,17 +82,24 @@ function performSearch(max = undefined, _start = undefined) {
     }
     if (_start != undefined) {
         for (var i = 0; i < _start - 1; i++) {
-            graph = addVertex(graph.slice(0))
+            graph.addVertex();
             pb.update(i + 1);
         }
     }
     let start = millis();
     for (let i = _start == undefined ? 1 : _start; max == undefined || i <= max; i++) {
-        let [g, p] = nextSearch(graph.slice(0));
-        graph = g.slice(0);
-        if (p != undefined) {
-            lastPath = p;
+        graph.addVertex();
+        let _path = nextSearch(graph);
+        if (_path != undefined) {
+            if (!lastEntryPoints.includes(_path[0])) {
+                lastEntryPoints.push(_path[0]);
+                if (lastEntryPoints.length > 10) {
+                    lastEntryPoints = lastEntryPoints.slice(1);
+                }
+            }
+            lastPath = _path;
             solutions.push(i);
+            graph.updateQwithPath(_path);
         }
         if (max != undefined) {
             pb.update(i);
@@ -112,4 +111,4 @@ function performSearch(max = undefined, _start = undefined) {
     console.log(`solutions found for ${solutions}`);
 }
 
-performSearch(40, 15);
+performSearch(300, 15);
