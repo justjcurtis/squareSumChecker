@@ -13,6 +13,7 @@ n=299 is currently the highest n checked afaik.
 The creation of this project was inspired by [this video](https://www.youtube.com/watch?v=G1m7goLCJDY) on the topic from numberphile.
 
 ## Todos
+- Refactor to accept command line args as inputs for search max & start.
 - Implement saving of output as each solution is found.
 - Implement multi-threaded tree search using node workers for more efficient cpu usage.
 - Refactor heuristic evaluation to "belong" to the vertex & connection classes where sensible.
