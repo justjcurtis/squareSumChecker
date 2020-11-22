@@ -167,9 +167,12 @@ function performSearch(max = undefined, _start = undefined) {
                 lastPaths = lastPaths.slice(1);
             }
             solutions.push(i);
-            //fs.appendFileSync('./solutions.json', JSON.stringify({val: i, path: _path}))
+            fs.appendFileSync("./solutions.json", JSON.stringify({ val: i, path: _path }));
             graph.updateQwithPath(_path);
+        } else if (i > 25) {
+            console.log("no path found for " + i);
         }
+
         if (max != undefined) {
             pb.update(i);
         }
@@ -180,5 +183,5 @@ function performSearch(max = undefined, _start = undefined) {
     console.log(`solutions found for ${solutions}`);
 }
 
-performSearch(300, 40);
+performSearch(500, 15);
 //performSearch(45);
