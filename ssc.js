@@ -1,16 +1,15 @@
 const Graph = require('./lib/models/graph')
+const fs = require('fs')
 
-const arrSum = arr => arr.slice(0).reduce((a,v) => a+v);
-
-getSquares = (graphMax) =>{
+const getSquares = (graphMax) =>{
     let sqrt = 1;
-    let squares = []
+    let squares = {}
     let currentSquare = -1
 
     while(true){
         currentSquare = Math.pow(sqrt, 2)
         if(currentSquare <= graphMax){
-            squares.push(currentSquare)
+            squares[currentSquare] = true;
             sqrt++
         }else{
             break;
@@ -19,57 +18,56 @@ getSquares = (graphMax) =>{
     return squares
 }
 
-
-const checkAll = (currentMax, absoluteMax) => {
-    const squares = getSquares(absoluteMax+absoluteMax-1)
-    while(currentMax <= absoluteMax){
-        let sm = currentMax+currentMax-1
-        const g = new Graph(squares.filter(sq => sq <= sm), 1, currentMax);
-        
-        let endCount = 0
-        let failure = false
-        for(let i = g.min; i <= g.max; i++){
-            const arr = g.squareSumsMap[i]
-            if(arr.length == 1){
-                endCount ++
-            }
-            if(endCount > 2 || arr.length == 0){
-                console.log(`failure for max of ${g.max}`)
-                failure = true
-                break
-            }
+const getEnds = (squareSumsMap, max) => {
+    let ends = []
+    for(let i = 1; i <= max; i++){
+        const arr = squareSumsMap[i]
+        if(arr.length == 1){
+            ends.push(i)
         }
-        if(!failure){
-            console.log(`solutions possible for max of ${g.max}`)
-        }
-        currentMax++
     }
-}
-
-const demo = max => {
-    let sm = max+max-1
-    const squares = getSquares(sm)
-    console.log(squares)
-    const start = Date.now()
-    const g = new Graph(squares.filter(sq => sq <= sm), 1, max);
-    const end = Date.now()
-    console.log(g.squareSumsMap)
-    console.log(`Took ${end-start}ms`)
+    return ends;
 }
 
 const findRoute = (g) => {
-    for(let i = 1; i <= g.max; i++){
-        let squareSumsMap = []
-        for(let j = 1; j <= g.max; j++){
-            squareSumsMap[j] = g.squareSumsMap[j]
+    const ends = getEnds(g.squareSumsMap, g.max);
+    if(ends.length >2){
+        return undefined
+    }
+    
+    if(ends.length >= 1){
+        ends.sort((a, b) => g.squareSumsMap[a].length-g.squareSumsMap[b].length)
+        for(let i = 0; i < ends.length; i++){
+            let squareSumsMap = []
+            for(let j = 1; j <= g.max; j++){
+                squareSumsMap[j] = g.squareSumsMap[j]
+            }
+            const path = recursiveRoute([ends[i]], squareSumsMap, g.max)
+            if(path != undefined){
+                return path
+            }
         }
-        const path = recursiveRoute([i], squareSumsMap, g.max)
-        if(path != undefined){
-            return path
+    }
+    else{
+        for(let i = 1; i <= g.max; i++){
+            let squareSumsMap = []
+            for(let j = 1; j <= g.max; j++){
+                squareSumsMap[j] = g.squareSumsMap[j];
+            }
+            for(let j = 1; j <= g.max; j++){
+                squareSumsMap[j].sort((a,b) =>{
+                    return g.squareSumsMap[a].length - g.squareSumsMap[b].length
+                }) 
+            }
+            const path = recursiveRoute([i], squareSumsMap, g.max)
+            if(path != undefined){
+                return path
+            }
         }
     }
     return undefined
 }
+
 
 const checkForIslandsAndThreeEnds = (path, squareSumsMap, max) => {
     let endCount = 0
@@ -99,7 +97,9 @@ const recursiveRoute = (path, squareSumsMap, max) => {
     for(let i = 1; i <= max; i++){
         nextSquareSumsMap[i] = i !== tip || squareSumsMap[tip].includes(i) ? squareSumsMap[i].filter(b => b != tip) : squareSumsMap[i]
     }
-    for(const next of squareSumsMap[tip]){
+    const nextOptions = squareSumsMap[tip].slice(0)
+    nextOptions.sort((a, b) => squareSumsMap[a].length - squareSumsMap[b].length)
+    for(const next of nextOptions){
         let p = recursiveRoute([...path, next], nextSquareSumsMap, max)
         if(p != undefined){
             return p
@@ -109,22 +109,77 @@ const recursiveRoute = (path, squareSumsMap, max) => {
 }
 
 const findRoutes = (currentMax, absoluteMax) => {
+    const logDate = new Date().toISOString()
+    const start = Date.now()
     const squares = getSquares(absoluteMax+absoluteMax-1)
+    let first = true;
     while(currentMax <= absoluteMax){
-        let sm = currentMax+currentMax-1
-        const g = new Graph(squares.filter(sq => sq <= sm), 1, currentMax);
+        const g = new Graph(squares, 1, currentMax);
         const path = findRoute(g)
         if(path != undefined){
-            console.log(`\nPath found for max of ${currentMax}`)
-            console.log(JSON.stringify(path))
+            console.log(`Path found for max of ${currentMax}`)
+            if(process.argv[4].toLowerCase() == '-p'){
+                console.log(JSON.stringify(path))
+            }
         }else{
-            console.log(`\nNo path possible for max of ${currentMax}`)
+            console.log(`No path possible for max of ${currentMax}`)
         }
+        if(process.argv[4].toLowerCase() == '-o'){
+            fs.appendFileSync(`./ssc_${logDate}.json`, `${first ? '[\n' : ''}${JSON.stringify({
+                n:currentMax,
+                path
+            })}${currentMax == absoluteMax ? '\n]' : ',\n'}`)
+        }
+        first = false
         currentMax ++
+    }
+    const end = Date.now()
+    console.log(`Took: ${end-start}ms`)
+}
+
+const checkPath = (path, squares) => {
+    for(let i = 0; i < path.length-1; i++){
+        const a = path[i]
+        const b = path[i+1]
+        if(squares[a+b]==undefined){
+            return false
+        }
+    }
+    return true
+}
+
+const checkPaths = (filepath) => {
+    const logDate = new Date().toISOString()
+    const paths = JSON.parse(fs.readFileSync(filepath, 'utf-8'));
+    const graphMax = paths.slice(-1)[0].n
+    const squares = getSquares(graphMax+graphMax-1)
+    let results = []
+    for(const pathEntry of paths){
+        if(pathEntry.path){
+            const valid = checkPath(pathEntry.path, squares)
+            if(!valid){
+                console.log(`Invalid path found for ${pathEntry.n}`)
+                console.log(pathEntry.path)
+            }else{
+                // console.log(`Valid path found for ${pathEntry.n}`)
+            }
+            if(process.argv[2].toLowerCase() == '-co'){
+                results.push({n: pathEntry.n, valid})
+            }
+        }else{
+            console.log(`No path supplied for ${pathEntry.n}`)
+        }
+    }
+    if(process.argv[2].toLowerCase() == '-co'){
+        let outpath = `./check_${filepath.split('_').slice(-1)[0]}`
+        fs.writeFileSync(outpath, JSON.stringify(results))
     }
 }
 
-// demo(1000)
-// checkAll(1, 25)
-// checkSums(25, 500)
-findRoutes(300, 300)
+const start = process.argv[2] ? process.argv[2] : 1
+const end = process.argv[3] ? process.argv[3] : 300
+if(process.argv[2].toLowerCase() == '-c' || process.argv[2].toLowerCase() == '-co'){
+    checkPaths(process.argv[3])
+}else{
+    findRoutes(parseInt(start), parseInt(end))
+}
