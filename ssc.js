@@ -118,13 +118,13 @@ const findRoutes = (currentMax, absoluteMax) => {
         const path = findRoute(g)
         if(path != undefined){
             console.log(`Path found for max of ${currentMax}`)
-            if(process.argv[4].toLowerCase() == '-p'){
+            if(process.argv[4] && process.argv[4].toLowerCase() == '-p'){
                 console.log(JSON.stringify(path))
             }
         }else{
             console.log(`No path possible for max of ${currentMax}`)
         }
-        if(process.argv[4].toLowerCase() == '-o'){
+        if(process.argv[4] && process.argv[4].toLowerCase() == '-o'){
             fs.appendFileSync(`./ssc_${logDate}.json`, `${first ? '[\n' : ''}${JSON.stringify({
                 n:currentMax,
                 path
