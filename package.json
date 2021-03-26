@@ -1,9 +1,0 @@
-{
-    "name": "SquareSumChecker",
-    "jest": {
-        "verbose": true
-    },
-    "dependencies": {
-        "cli-progress": "^3.8.2"
-    }
-}
