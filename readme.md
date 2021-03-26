@@ -13,9 +13,9 @@ n=299 is currently the highest n checked afaik.
 The creation of this project was inspired by [this video](https://www.youtube.com/watch?v=G1m7goLCJDY) on the topic from numberphile.
 
 ## Todos
-- Refactor to accept command line args as inputs for search max & start.
-- Implement saving of output as each solution is found.
-- Implement multi-threaded tree search using node workers for more efficient cpu usage.
-- Refactor heuristic evaluation to "belong" to the vertex & connection classes where sensible.
-- Further optimise tree search with more sensible decisions for pathing instead of relying on simple heuristic.
-- Refine heuristic for better guessing in situations not yet seen or too complex to optimise algorithmically.
+- [x] Refactor to accept command line args as inputs for search max & start.
+- [x] Implement saving of output as each solution is found.
+- [ ] Implement multi-threaded tree search using node workers for more efficient cpu usage.
+- [x] Further optimise tree search with more sensible decisions for pathing instead of relying on simple heuristic.
+- [ ] Re-add some heuristic optimisation if possible & effective.
+- [ ] Add optimisations for using recent paths and/or recent path parts.
