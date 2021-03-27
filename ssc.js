@@ -149,7 +149,6 @@ const checkPath = (path, squares) => {
 }
 
 const checkPaths = (filepath) => {
-    const logDate = new Date().toISOString()
     const paths = JSON.parse(fs.readFileSync(filepath, 'utf-8'));
     const graphMax = paths.slice(-1)[0].n
     const squares = getSquares(graphMax+graphMax-1)
