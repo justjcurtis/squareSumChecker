@@ -3,6 +3,7 @@ const fs = require('fs')
 const { fork } = require('child_process');
 const os = require('os')
 const cpuCount = os.cpus().length
+const logDate = new Date().toISOString()
 
 const getSquares = (graphMax) => {
     let sqrt = 1;
@@ -46,11 +47,12 @@ const processBatch = (squares, currentMax, absoluteMax, batchSize, first = true)
                             console.log(`No path possible for max of ${cm}`)
                         }
                         if (process.argv[4] && process.argv[4].toLowerCase() == '-o') {
-                            // fs.appendFileSync(`./ssc_${logDate}.json`, `${first ? '[\n' : ''}${JSON.stringify({
-                            //     n:cm,
-                            //     p
-                            // })}${cm == absoluteMax ? '\n]' : ',\n'}`)
+                            fs.appendFileSync(`./ssc_${logDate}.json`, `${first ? '[\n' : ''}${JSON.stringify({
+                                n:cm,
+                                p
+                            })}${cm == absoluteMax ? '\n]' : ',\n'}`)
                         }
+                        first = false
                     }
                     currentMax += batchSize
                     processBatch(squares, currentMax, absoluteMax, batchSize, false)
@@ -65,12 +67,15 @@ const processBatch = (squares, currentMax, absoluteMax, batchSize, first = true)
             childProcesses.push(pathFinder)
         }
     } else {
-        console.timeEnd('a')
+        if (process.argv[4] && process.argv[4].toLowerCase() == '-o') {
+            fs.appendFileSync(`./ssc_${logDate}.json`, `]`)
+        }
+        console.timeEnd('Time taken')
     }
 }
 
 const findRoutes = (currentMax, absoluteMax, batchSize = cpuCount) => {
-    console.time('a')
+    console.time('Time taken')
     const squares = getSquares(absoluteMax + absoluteMax - 1)
     if (currentMax <= absoluteMax) {
         processBatch(squares, currentMax, absoluteMax, batchSize)
