@@ -1,6 +1,8 @@
 const Graph = require('./lib/models/graph')
 const fs = require('fs')
 const { fork } = require('child_process');
+const os = require('os')
+const cpuCount = os.cpus().length
 
 const getSquares = (graphMax) => {
     let sqrt = 1;
@@ -24,6 +26,7 @@ const processBatch = (squares, currentMax, absoluteMax, batchSize, first = true)
         const childProcesses = []
         const paths = []
         for (let i = 0; i < batchSize; i++) {
+            if (currentMax + i > absoluteMax) { continue }
             const pathFinder = fork('./pathFinder.js');
             pathFinder.on('message', function({ path: p, currentMax: cm }) {
                 // console.log(cm, p)
@@ -31,7 +34,7 @@ const processBatch = (squares, currentMax, absoluteMax, batchSize, first = true)
                 paths.sort((a, b) => {
                     return a[1] - b[1]
                 })
-                if (paths.length == batchSize) {
+                if (paths.length == batchSize || currentMax + paths.length == absoluteMax) {
                     for (const [p, cm] of paths) {
 
                         if (p != undefined) {
@@ -66,7 +69,7 @@ const processBatch = (squares, currentMax, absoluteMax, batchSize, first = true)
     }
 }
 
-const findRoutes = (currentMax, absoluteMax, batchSize = 4) => {
+const findRoutes = (currentMax, absoluteMax, batchSize = cpuCount) => {
     console.time('a')
     const squares = getSquares(absoluteMax + absoluteMax - 1)
     if (currentMax <= absoluteMax) {
