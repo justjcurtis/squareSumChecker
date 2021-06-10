@@ -22,61 +22,66 @@ const getSquares = (graphMax) => {
     return squares
 }
 
-const processBatch = (squares, currentMax, absoluteMax, batchSize, first = true) => {
-    if (currentMax <= absoluteMax) {
-        const childProcesses = []
-        const paths = []
-        for (let i = 0; i < batchSize; i++) {
-            if (currentMax + i > absoluteMax) { continue }
-            const pathFinder = fork('./pathFinder.js');
-            pathFinder.on('message', function({ path: p, currentMax: cm }) {
-                // console.log(cm, p)
-                paths.push([p, cm])
-                paths.sort((a, b) => {
-                    return a[1] - b[1]
-                })
-                if (paths.length == batchSize || currentMax + paths.length == absoluteMax +1) {
-                    for (const [p, cm] of paths) {
+const processBatch = (squares, currentMax, absoluteMax, batchSize) => {
+    return new Promise((resolve, reject) => {
+        try {
 
-                        if (p != undefined) {
-                            console.log(`Path found for max of ${cm}`)
-                            if (process.argv[4] && process.argv[4].toLowerCase() == '-p') {
-                                console.log(JSON.stringify(p))
-                            }
-                        } else {
-                            console.log(`No path possible for max of ${cm}`)
+            if (currentMax <= absoluteMax) {
+                const paths = []
+                for (let i = 0; i < batchSize; i++) {
+                    if (currentMax + i > absoluteMax) { continue }
+                    const pathFinder = fork('./pathFinder.js');
+                    pathFinder.on('message', function({ path: p, currentMax: cm }) {
+                        paths.push([p, cm])
+                        if (paths.length == batchSize || currentMax + paths.length == absoluteMax + 1) {
+                            paths.sort((a, b) => {
+                                return a[1] - b[1]
+                            })
+                            resolve(paths)
                         }
-                        if (process.argv[4] && process.argv[4].toLowerCase() == '-o') {
-                            fs.appendFileSync(`./ssc_${logDate}.json`, `${first ? '[\n' : ''}${JSON.stringify({
-                                n:cm,
-                                path:p
-                            })}${cm == absoluteMax ? '\n]' : ',\n'}`)
-                        }
-                        first = false
-                    }
-                    currentMax += batchSize
-                    processBatch(squares, currentMax, absoluteMax, batchSize, false)
+                    }.bind(this))
+
+                    pathFinder.on('close', function(msg) {
+                        this.kill();
+                    });
+                    pathFinder.send({ squares, currentMax: currentMax + i })
                 }
-
-            }.bind(this))
-
-            pathFinder.on('close', function(msg) {
-                this.kill();
-            });
-            pathFinder.send({ squares, currentMax: currentMax + i })
-            childProcesses.push(pathFinder)
+            }
+        } catch (err) {
+            console.log(err)
+            reject(err)
         }
-    } else {
-        console.timeEnd('Time taken')
-    }
+
+    })
 }
 
-const findRoutes = (currentMax, absoluteMax, batchSize = cpuCount) => {
+const findRoutes = async(currentMax, absoluteMax, batchSize = cpuCount) => {
     console.time('Time taken')
+    let first = true
     const squares = getSquares(absoluteMax + absoluteMax - 1)
-    if (currentMax <= absoluteMax) {
-        processBatch(squares, currentMax, absoluteMax, batchSize)
+    while (currentMax <= absoluteMax) {
+        const paths = await processBatch(squares, currentMax, absoluteMax, batchSize)
+        for (const [p, cm] of paths) {
+            if (p != undefined) {
+                console.log(`Path found for max of ${cm}`)
+                if (process.argv[4] && process.argv[4].toLowerCase() == '-p') {
+                    console.log(JSON.stringify(p))
+                }
+            } else {
+                console.log(`No path possible for max of ${cm}`)
+            }
+            if (process.argv[4] && process.argv[4].toLowerCase() == '-o') {
+                fs.appendFileSync(`./ssc_${logDate}.json`, `${first ? '[\n' : ''}${JSON.stringify({
+                    n:cm,
+                    path:p
+                })}${cm == absoluteMax ? '\n]' : ',\n'}`)
+            }
+            first = false
+        }
+        currentMax += batchSize
     }
+
+    console.timeEnd('Time taken')
 }
 
 const checkPath = (path, squares) => {
