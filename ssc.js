@@ -35,7 +35,7 @@ const processBatch = (squares, currentMax, absoluteMax, batchSize, first = true)
                 paths.sort((a, b) => {
                     return a[1] - b[1]
                 })
-                if (paths.length == batchSize || currentMax + paths.length == absoluteMax) {
+                if (paths.length == batchSize || currentMax + paths.length == absoluteMax +1) {
                     for (const [p, cm] of paths) {
 
                         if (p != undefined) {
@@ -49,7 +49,7 @@ const processBatch = (squares, currentMax, absoluteMax, batchSize, first = true)
                         if (process.argv[4] && process.argv[4].toLowerCase() == '-o') {
                             fs.appendFileSync(`./ssc_${logDate}.json`, `${first ? '[\n' : ''}${JSON.stringify({
                                 n:cm,
-                                p
+                                path:p
                             })}${cm == absoluteMax ? '\n]' : ',\n'}`)
                         }
                         first = false
@@ -67,9 +67,6 @@ const processBatch = (squares, currentMax, absoluteMax, batchSize, first = true)
             childProcesses.push(pathFinder)
         }
     } else {
-        if (process.argv[4] && process.argv[4].toLowerCase() == '-o') {
-            fs.appendFileSync(`./ssc_${logDate}.json`, `]`)
-        }
         console.timeEnd('Time taken')
     }
 }
