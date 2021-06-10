@@ -1,9 +1,9 @@
 const Graph = require('./lib/models/graph')
 
-process.on('message', function({ squares, currentMax }) {
+process.on('message', function(message) {
 
     init = function() {
-        handleMessage(squares, currentMax);
+        handleMessage(message);
     }.bind(this)();
 
 
@@ -95,11 +95,20 @@ process.on('message', function({ squares, currentMax }) {
         return undefined
     }
 
-    function handleMessage(squares, currentMax) {
-        const g = new Graph(squares, 1, currentMax);
-        const path = findRoute(g)
-        process.send({ path, currentMax })
-        process.disconnect()
+    function handleMessage(message) {
+        if (message.squares && message.currentMax) {
+            const { squares, currentMax } = message
+            try {
+                const g = new Graph(squares, 1, currentMax);
+                const path = findRoute(g)
+                process.send({ path, currentMax })
+            } catch (err) {
+                console.log(err)
+            }
+        }
+        if (message.kill) {
+            process.disconnect()
+        }
     }
 });
 

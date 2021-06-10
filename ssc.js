@@ -25,7 +25,6 @@ const getSquares = (graphMax) => {
 const processBatch = (squares, currentMax, absoluteMax, batchSize) => {
     return new Promise((resolve, reject) => {
         try {
-
             if (currentMax <= absoluteMax) {
                 const paths = []
                 for (let i = 0; i < batchSize; i++) {
@@ -33,6 +32,7 @@ const processBatch = (squares, currentMax, absoluteMax, batchSize) => {
                     const pathFinder = fork('./pathFinder.js');
                     pathFinder.on('message', function({ path: p, currentMax: cm }) {
                         paths.push([p, cm])
+                        pathFinder.send({ kill: true })
                         if (paths.length == batchSize || currentMax + paths.length == absoluteMax + 1) {
                             paths.sort((a, b) => {
                                 return a[1] - b[1]
@@ -40,10 +40,6 @@ const processBatch = (squares, currentMax, absoluteMax, batchSize) => {
                             resolve(paths)
                         }
                     }.bind(this))
-
-                    pathFinder.on('close', function(msg) {
-                        this.kill();
-                    });
                     pathFinder.send({ squares, currentMax: currentMax + i })
                 }
             }
