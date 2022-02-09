@@ -25,12 +25,12 @@ const getAllRoutes = async(min, max, pbar = null) => {
         const squares = getSquares(max + max - 1)
         const results = {}
         let finished = 0
-        for (let i = min; i <= max; i++) {
-            getPathService({ squares, i, max }, ({ path, currentMax }) => {
+        const q = new Array((max - min) + 1).fill().map((_, i) => i + 1)
+        q.sort((a, b) => Math.random() - .5)
+        for (let i = 0; i < q.length; i++) {
+            getPathService({ squares, i: q[i] }, ({ path, currentMax }) => {
                 finished++
-                if (pbar != null) {
-                    pbar.tick()
-                }
+                if (pbar != null) pbar.tick()
                 if (path != undefined) {
                     if (print) console.log(`Path found for max of ${currentMax}`)
                     results[currentMax] = path
@@ -50,7 +50,7 @@ const getAllRoutes = async(min, max, pbar = null) => {
 
 const findRoutes = async(min, max) => {
     let pbar = null
-    if (bar) pbar = new ProgressBar('Pathing [:bar] :percent | elapsed: :elapseds', {
+    if (bar) pbar = new ProgressBar('Pathing [:bar] :percent | eta: :etas | elapsed: :elapseds', {
         complete: '=',
         incomplete: ' ',
         width: 40,
