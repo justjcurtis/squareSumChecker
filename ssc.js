@@ -38,7 +38,6 @@ const getAllRoutes = async(min, max, pbar = null) => {
                     if (print) console.log(`No path possible for max of ${currentMax}`)
                     results[currentMax] = null
                 }
-
                 if (finished == (max - min) + 1) {
                     workerFarm.end(getPathService)
                     res(results)
