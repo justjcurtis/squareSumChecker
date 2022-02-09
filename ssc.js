@@ -1,7 +1,7 @@
 const fs = require('fs')
 const workerFarm = require('worker-farm')
 const getPathService = workerFarm(require.resolve('./getPath'))
-var ProgressBar = require('progress');
+const ProgressBar = require('progress');
 const logDate = new Date().toISOString()
 let print = false
 let bar = true
@@ -25,7 +25,7 @@ const getAllRoutes = async(min, max, pbar = null) => {
         const squares = getSquares(max + max - 1)
         const results = {}
         let finished = 0
-        const q = new Array((max - min) + 1).fill().map((_, i) => i + 1)
+        const q = new Array((max - min) + 1).fill().map((_, i) => i + min)
         q.sort((a, b) => Math.random() - .5)
         for (let i = 0; i < q.length; i++) {
             getPathService({ squares, i: q[i] }, ({ path, currentMax }) => {
