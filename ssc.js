@@ -30,15 +30,15 @@ const getAllRoutes = async(min, max, pbar = null) => {
         for (let i = 0; i < q.length; i++) {
             getPathService({ squares, i: q[i] }, ({ path, currentMax }) => {
                 finished++
-                if (pbar != null) pbar.tick()
-                if (path != undefined) {
+                if (pbar !== null) pbar.tick()
+                if (path !== undefined) {
                     if (print) console.log(`Path found for max of ${currentMax}`)
                     results[currentMax] = path
                 } else {
                     if (print) console.log(`No path possible for max of ${currentMax}`)
                     results[currentMax] = null
                 }
-                if (finished == (max - min) + 1) {
+                if (finished === (max - min) + 1) {
                     workerFarm.end(getPathService)
                     res(results)
                 }
@@ -58,7 +58,7 @@ const findRoutes = async(min, max) => {
     if (!bar) console.time('Time taken')
     const paths = await getAllRoutes(min, max, pbar)
     if (!bar) console.timeEnd('Time taken')
-    if (process.argv[4] && process.argv[4].toLowerCase() == '-o') {
+    if (process.argv[4] && process.argv[4].toLowerCase() === '-o') {
         console.log('Saving...')
         fs.writeFileSync(`./ssc_${logDate}.json`, JSON.stringify(paths))
         console.log(`Saved ssc_${logDate}.json`)
@@ -69,7 +69,7 @@ const checkPath = (path, squares) => {
     for (let i = 0; i < path.length - 1; i++) {
         const a = path[i]
         const b = path[i + 1]
-        if (squares[a + b] == undefined) return false
+        if (squares[a + b] === undefined) return false
     }
     return true
 }
@@ -87,12 +87,12 @@ const checkPaths = (filepath) => {
                 console.log(`Invalid path found for ${pathEntry.n}`)
                 console.log(pathEntry.path)
             }
-            if (process.argv[2].toLowerCase() == '-co') results.push({ n: pathEntry.n, valid })
+            if (process.argv[2].toLowerCase() === '-co') results.push({ n: pathEntry.n, valid })
         } else {
             console.log(`No path supplied for ${pathEntry.n}`)
         }
     }
-    if (process.argv[2].toLowerCase() == '-co') {
+    if (process.argv[2].toLowerCase() === '-co') {
         let outpath = `./check_${filepath.split('_').slice(-1)[0]}`
         fs.writeFileSync(outpath, JSON.stringify(results))
     }
