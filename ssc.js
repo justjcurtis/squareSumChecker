@@ -6,29 +6,29 @@ const logDate = new Date().toISOString()
 let print = false
 let bar = true
 
-const getSquares = (graphMax) => {
+const getConMap = (graphMax) => {
     let sqrt = 1;
-    let squares = {}
+    let conMap = {}
     let currentSquare = -1
-
+        // TODO: library-ify to enable passing of hash function & this function
     while (true) {
         currentSquare = Math.pow(sqrt, 2)
         if (currentSquare > graphMax) break
-        squares[currentSquare] = true;
+        conMap[currentSquare] = true;
         sqrt++
     }
-    return squares
+    return conMap
 }
 
 const getAllRoutes = async(min, max, pbar = null) => {
     return new Promise((res, rej) => {
-        const squares = getSquares(max + max - 1)
+        const conMap = getConMap(max + max - 1)
         const results = {}
         let finished = 0
         const q = new Array((max - min) + 1).fill().map((_, i) => i + 1)
         q.sort((a, b) => Math.random() - .5)
         for (let i = 0; i < q.length; i++) {
-            getPathService({ squares, i: q[i] }, ({ path, currentMax }) => {
+            getPathService({ conMap, i: q[i] }, ({ path, currentMax }) => {
                 finished++
                 if (pbar != null) pbar.tick()
                 if (path != undefined) {
@@ -65,11 +65,11 @@ const findRoutes = async(min, max) => {
     }
 }
 
-const checkPath = (path, squares) => {
+const checkPath = (path, conMap) => {
     for (let i = 0; i < path.length - 1; i++) {
         const a = path[i]
         const b = path[i + 1]
-        if (squares[a + b] == undefined) return false
+        if (conMap[a + b] == undefined) return false
     }
     return true
 }
@@ -77,12 +77,12 @@ const checkPath = (path, squares) => {
 const checkPaths = (filepath) => {
     const paths = JSON.parse(fs.readFileSync(filepath, 'utf-8'));
     const graphMax = paths[paths.length - 1].n
-    const squares = getSquares(graphMax + graphMax - 1)
+    const conMap = getConMap(graphMax + graphMax - 1)
     let results = []
     for (let i = 0; i < paths.length; i++) {
         const pathEntry = paths[i]
         if (pathEntry.path) {
-            const valid = checkPath(pathEntry.path, squares)
+            const valid = checkPath(pathEntry.path, conMap)
             if (!valid) {
                 console.log(`Invalid path found for ${pathEntry.n}`)
                 console.log(pathEntry.path)
