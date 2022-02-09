@@ -17,6 +17,4 @@ The creation of this project was inspired by [this video](https://www.youtube.co
 - [x] Implement multi-threaded tree search using node workers for more efficient cpu usage.
     - [x] Handle each thread independently rather than in batches for even more efficient cpu usage.
 - [x] Further optimise tree search with more sensible decisions for pathing instead of relying on simple heuristic.
-- [ ] Re-add some heuristic optimisation if possible & effective.
-- [ ] Add optimisations for using recent paths and/or recent path parts.
 - [ ] Implement user defined graph rules eg a+b == x^3 etc.
