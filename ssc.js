@@ -50,7 +50,7 @@ const getAllRoutes = async(min, max, pbar = null) => {
 
 const findRoutes = async(min, max) => {
     let pbar = null
-    if (bar) pbar = new ProgressBar('Pathing [:bar] :percent | eta: :etas | elpsd: :elapseds', {
+    if (bar) pbar = new ProgressBar('Pathing [:bar] :percent | elapsed: :elapseds', {
         complete: '=',
         incomplete: ' ',
         width: 40,
