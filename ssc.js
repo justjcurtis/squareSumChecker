@@ -12,12 +12,9 @@ const getSquares = (graphMax) => {
 
     while (true) {
         currentSquare = Math.pow(sqrt, 2)
-        if (currentSquare <= graphMax) {
-            squares[currentSquare] = true;
-            sqrt++
-        } else {
-            break;
-        }
+        if (currentSquare > graphMax) break
+        squares[currentSquare] = true;
+        sqrt++
     }
     return squares
 }
