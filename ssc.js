@@ -1,9 +1,8 @@
 const fs = require('fs')
-const { fork } = require('child_process');
-const os = require('os')
-const cpuCount = os.cpus().length
+const { resolve } = require('path/posix')
+const workerFarm = require('worker-farm')
+const getPathService = workerFarm(require.resolve('./getPath'))
 const logDate = new Date().toISOString()
-let prevMap = null
 
 const getSquares = (graphMax) => {
     let sqrt = 1;
@@ -19,62 +18,41 @@ const getSquares = (graphMax) => {
     return squares
 }
 
-const processBatch = (squares, currentMax, absoluteMax, batchSize) => {
-    return new Promise((resolve, reject) => {
-        try {
-            if (currentMax <= absoluteMax) {
-                const paths = []
-                for (let i = 0; i < batchSize; i++) {
-                    if (currentMax + i > absoluteMax) break
-                    const pathFinder = fork('./pathFinder.js');
-                    pathFinder.on('message', function({ path: p, currentMax: cm, map }) {
-                        if (cm == currentMax + batchSize - 1) prevMap = map
-                        paths.push([p, cm])
-                        pathFinder.send({ kill: true })
-                        if (paths.length == batchSize || currentMax + paths.length == absoluteMax + 1) {
-                            paths.sort((a, b) => a[1] - b[1])
-                            resolve(paths)
-                        }
-                    }.bind(this))
-                    pathFinder.send({ squares, currentMax: currentMax + i, prevMap })
+const getAllRoutes = async(min, max, print) => {
+    return new Promise((res, rej) => {
+        const squares = getSquares(max + max - 1)
+        const results = {}
+        let finished = 0
+        for (let i = min; i <= max; i++) {
+            getPathService({ squares, i, max }, ({ path, currentMax }) => {
+                finished++
+                if(path != undefined){
+                    if(print) console.log(`Path found for max of ${currentMax}`)
+                    results[currentMax] = path
+                }else{
+                    if(print)console.log(`No path possible for max of ${currentMax}`)
+                    results[currentMax] = null
                 }
-            }
-        } catch (err) {
-            console.log(err)
-            reject(err)
-        }
 
+                if (finished == (max - min) + 1) {
+                    workerFarm.end(getPathService)
+                    res(results)
+                }
+            })
+        }
     })
 }
 
-const findRoutes = async(currentMax, absoluteMax, batchSize = cpuCount) => {
+const findRoutes = async(min, max) => {
+    const print = process.argv.slice(2).includes('-p')
     console.time('Time taken')
-    let first = true
-    const squares = getSquares(absoluteMax + absoluteMax - 1)
-    while (currentMax <= absoluteMax) {
-        const paths = await processBatch(squares, currentMax, absoluteMax, batchSize)
-        for (let i = 0; i < paths.length; i++) {
-            const [p, cm] = paths[i]
-            if (p != undefined) {
-                console.log(`Path found for max of ${cm}`)
-                if (process.argv[4] && process.argv[4].toLowerCase() == '-p') {
-                    console.log(JSON.stringify(p))
-                }
-            } else {
-                console.log(`No path possible for max of ${cm}`)
-            }
-            if (process.argv[4] && process.argv[4].toLowerCase() == '-o') {
-                fs.appendFileSync(`./ssc_${logDate}.json`, `${first ? '[\n' : ''}${JSON.stringify({
-                    n:cm,
-                    path:p
-                })}${cm == absoluteMax ? '\n]' : ',\n'}`)
-            }
-            first = false
-        }
-        currentMax += batchSize
-    }
-
+    const paths = await getAllRoutes(min, max, print)
     console.timeEnd('Time taken')
+    if (process.argv[4] && process.argv[4].toLowerCase() == '-o') {
+        console.log('Saving...')
+        fs.writeFileSync(`./ssc_${logDate}.json`, JSON.stringify(paths))
+        console.log(`Saved ssc_${logDate}.json`)
+    }
 }
 
 const checkPath = (path, squares) => {
