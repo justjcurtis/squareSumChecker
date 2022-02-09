@@ -1,8 +1,10 @@
 const fs = require('fs')
-const { resolve } = require('path/posix')
 const workerFarm = require('worker-farm')
 const getPathService = workerFarm(require.resolve('./getPath'))
+var ProgressBar = require('progress');
 const logDate = new Date().toISOString()
+let print = false
+let bar = true
 
 const getSquares = (graphMax) => {
     let sqrt = 1;
@@ -18,7 +20,7 @@ const getSquares = (graphMax) => {
     return squares
 }
 
-const getAllRoutes = async(min, max, print) => {
+const getAllRoutes = async(min, max, pbar = null) => {
     return new Promise((res, rej) => {
         const squares = getSquares(max + max - 1)
         const results = {}
@@ -26,11 +28,14 @@ const getAllRoutes = async(min, max, print) => {
         for (let i = min; i <= max; i++) {
             getPathService({ squares, i, max }, ({ path, currentMax }) => {
                 finished++
-                if(path != undefined){
-                    if(print) console.log(`Path found for max of ${currentMax}`)
+                if (pbar != null) {
+                    pbar.tick()
+                }
+                if (path != undefined) {
+                    if (print) console.log(`Path found for max of ${currentMax}`)
                     results[currentMax] = path
-                }else{
-                    if(print)console.log(`No path possible for max of ${currentMax}`)
+                } else {
+                    if (print) console.log(`No path possible for max of ${currentMax}`)
                     results[currentMax] = null
                 }
 
@@ -44,10 +49,16 @@ const getAllRoutes = async(min, max, print) => {
 }
 
 const findRoutes = async(min, max) => {
-    const print = process.argv.slice(2).includes('-p')
-    console.time('Time taken')
-    const paths = await getAllRoutes(min, max, print)
-    console.timeEnd('Time taken')
+    let pbar = null
+    if (bar) pbar = new ProgressBar('Pathing [:bar] :percent | eta: :etas | elpsd: :elapseds', {
+        complete: '=',
+        incomplete: ' ',
+        width: 40,
+        total: (max - min) + 1
+    });
+    if (!bar) console.time('Time taken')
+    const paths = await getAllRoutes(min, max, pbar)
+    if (!bar) console.timeEnd('Time taken')
     if (process.argv[4] && process.argv[4].toLowerCase() == '-o') {
         console.log('Saving...')
         fs.writeFileSync(`./ssc_${logDate}.json`, JSON.stringify(paths))
@@ -88,10 +99,21 @@ const checkPaths = (filepath) => {
     }
 }
 
-const start = process.argv[2] ? process.argv[2] : 1
-const end = process.argv[3] ? process.argv[3] : 300
-if (process.argv.length > 2 && (process.argv[2].toLowerCase() == '-c' || process.argv[2].toLowerCase() == '-co')) {
-    checkPaths(process.argv[3])
+const args = process.argv.slice(2)
+const start = args[0] || 1
+const end = args[1] || 300
+let check = false
+for (let i = 0; i < args.length; i++) {
+    if (args[i].includes('-')) {
+        const opts = Object.fromEntries(args[i].slice(1).split('').map(v => [v, true]))
+        if (opts.p) print = true
+        bar = !print
+        if (opts.c) check = true
+        break;
+    }
+}
+if (check) {
+    checkPaths(args[1])
 } else {
     findRoutes(parseInt(start), parseInt(end))
 }
