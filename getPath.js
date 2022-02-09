@@ -43,14 +43,13 @@ function findRoute(g) {
     if (ends.length > 2) return undefined
     let squareSumsMap = Object.assign({}, g.squareSumsMap)
     if (ends.length >= 1) {
-        ends.sort((a, b) => g.squareSumsMap[a].length - g.squareSumsMap[b].length)
+        ends.sort((a, b) => squareSumsMap[a].length - squareSumsMap[b].length)
         for (let i = 0; i < ends.length; i++) {
             const path = recursiveRoute([ends[i]], squareSumsMap, g.max)
             if (path != undefined) return path
         }
     } else {
         for (let i = 1; i <= g.max; i++) {
-            squareSumsMap[i].sort((a, b) => squareSumsMap[a].length - squareSumsMap[b].length)
             const path = recursiveRoute([i], squareSumsMap, g.max)
             if (path != undefined) return path
         }
