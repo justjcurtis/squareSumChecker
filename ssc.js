@@ -1,9 +1,9 @@
-const Graph = require('./lib/models/graph')
 const fs = require('fs')
 const { fork } = require('child_process');
 const os = require('os')
 const cpuCount = os.cpus().length
 const logDate = new Date().toISOString()
+let prevMap = null
 
 const getSquares = (graphMax) => {
     let sqrt = 1;
@@ -28,19 +28,18 @@ const processBatch = (squares, currentMax, absoluteMax, batchSize) => {
             if (currentMax <= absoluteMax) {
                 const paths = []
                 for (let i = 0; i < batchSize; i++) {
-                    if (currentMax + i > absoluteMax) { continue }
+                    if (currentMax + i > absoluteMax) break
                     const pathFinder = fork('./pathFinder.js');
-                    pathFinder.on('message', function({ path: p, currentMax: cm }) {
+                    pathFinder.on('message', function({ path: p, currentMax: cm, map }) {
+                        if (cm == currentMax + batchSize - 1) prevMap = map
                         paths.push([p, cm])
                         pathFinder.send({ kill: true })
                         if (paths.length == batchSize || currentMax + paths.length == absoluteMax + 1) {
-                            paths.sort((a, b) => {
-                                return a[1] - b[1]
-                            })
+                            paths.sort((a, b) => a[1] - b[1])
                             resolve(paths)
                         }
                     }.bind(this))
-                    pathFinder.send({ squares, currentMax: currentMax + i })
+                    pathFinder.send({ squares, currentMax: currentMax + i, prevMap })
                 }
             }
         } catch (err) {
@@ -57,7 +56,8 @@ const findRoutes = async(currentMax, absoluteMax, batchSize = cpuCount) => {
     const squares = getSquares(absoluteMax + absoluteMax - 1)
     while (currentMax <= absoluteMax) {
         const paths = await processBatch(squares, currentMax, absoluteMax, batchSize)
-        for (const [p, cm] of paths) {
+        for (let i = 0; i < paths.length; i++) {
+            const [p, cm] = paths[i]
             if (p != undefined) {
                 console.log(`Path found for max of ${cm}`)
                 if (process.argv[4] && process.argv[4].toLowerCase() == '-p') {
@@ -84,30 +84,25 @@ const checkPath = (path, squares) => {
     for (let i = 0; i < path.length - 1; i++) {
         const a = path[i]
         const b = path[i + 1]
-        if (squares[a + b] == undefined) {
-            return false
-        }
+        if (squares[a + b] == undefined) return false
     }
     return true
 }
 
 const checkPaths = (filepath) => {
     const paths = JSON.parse(fs.readFileSync(filepath, 'utf-8'));
-    const graphMax = paths.slice(-1)[0].n
+    const graphMax = paths[paths.length - 1].n
     const squares = getSquares(graphMax + graphMax - 1)
     let results = []
-    for (const pathEntry of paths) {
+    for (let i = 0; i < paths.length; i++) {
+        const pathEntry = paths[i]
         if (pathEntry.path) {
             const valid = checkPath(pathEntry.path, squares)
             if (!valid) {
                 console.log(`Invalid path found for ${pathEntry.n}`)
                 console.log(pathEntry.path)
-            } else {
-                // console.log(`Valid path found for ${pathEntry.n}`)
             }
-            if (process.argv[2].toLowerCase() == '-co') {
-                results.push({ n: pathEntry.n, valid })
-            }
+            if (process.argv[2].toLowerCase() == '-co') results.push({ n: pathEntry.n, valid })
         } else {
             console.log(`No path supplied for ${pathEntry.n}`)
         }
@@ -120,7 +115,7 @@ const checkPaths = (filepath) => {
 
 const start = process.argv[2] ? process.argv[2] : 1
 const end = process.argv[3] ? process.argv[3] : 300
-if (process.argv[2].toLowerCase() == '-c' || process.argv[2].toLowerCase() == '-co') {
+if (process.argv.length > 2 && (process.argv[2].toLowerCase() == '-c' || process.argv[2].toLowerCase() == '-co')) {
     checkPaths(process.argv[3])
 } else {
     findRoutes(parseInt(start), parseInt(end))
