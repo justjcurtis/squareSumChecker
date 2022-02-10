@@ -28,7 +28,7 @@ function recursiveRoute(path, squareSumsMap, max) {
     if (nextOptions.length > 1 && checkForIslandsAndThreeEnds(path, squareSumsMap, max)) return undefined;
     let nextSquareSumsMap = []
     for (let i = 1; i <= max; i++) {
-        nextSquareSumsMap[i] = squareSumsMap[i].filter(b => b !== tip)
+        nextSquareSumsMap[i] = squareSumsMap[i].filter(b => b != tip)
     }
     nextOptions.sort((a, b) => squareSumsMap[a].length - squareSumsMap[b].length)
     for (let i = 0; i < nextOptions.length; i++) {
