@@ -94,7 +94,7 @@ const recursiveRoute = (path, squareSumsMap, max) => {
     const tip = path.slice(-1)
     let nextSquareSumsMap = []
     for (let i = 1; i <= max; i++) {
-        nextSquareSumsMap[i] = i !== tip || squareSumsMap[tip].includes(i) ? squareSumsMap[i].filter(b => b !== tip) : squareSumsMap[i]
+        nextSquareSumsMap[i] = i !== tip || squareSumsMap[tip].includes(i) ? squareSumsMap[i].filter(b => b != tip) : squareSumsMap[i]
     }
     const nextOptions = squareSumsMap[tip].slice(0)
     nextOptions.sort((a, b) => squareSumsMap[a].length - squareSumsMap[b].length)
