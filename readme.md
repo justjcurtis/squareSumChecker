@@ -5,7 +5,7 @@ Square Sum Checker is a nodejs cli tool which tries to check (optimally) for pat
 
 ~~It is currently believed that all sets which satisfy n >= 25 will return a valid path using all numbers in the set.~~
 
-It has now been proven ([look here for more info](https://oeis.org/A090461)) than all sets of 1 to n where n >= 25 fall into this set. 
+It has now been proven ([look here for more info](https://oeis.org/A090461)) that all sets of 1 to n where n >= 25 fall into this set. 
 
 In the future I hope to make this tool able to accept user defined graph rules which will enable optimal generation & checking of paths through any type of graph rather than just a + b == x^2.
 
