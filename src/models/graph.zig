@@ -8,7 +8,6 @@ pub const Graph = struct {
     allocator: std.mem.Allocator = undefined,
 
     pub fn init(self: *Graph) !void {
-        // get stdout
         const stdout = std.io.getStdOut().writer();
         try stdout.print("Initializing graph...\n", .{});
         if (self.max < self.min) {
