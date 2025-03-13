@@ -62,6 +62,16 @@ pub const SqaureSumsMap = struct {
         };
     }
 
+    // A more efficient version that doesn't clone the entire structure
+    pub fn getEfficient(self: *SqaureSumsMap, allocator: std.mem.Allocator) !*SqaureSumsMap {
+        const newMap = try allocator.create(SqaureSumsMap);
+        newMap.* = SqaureSumsMap{
+            .map = self.map,
+            .max = self.max,
+        };
+        return newMap;
+    }
+
     pub fn get(self: *SqaureSumsMap, index: u32) std.ArrayList(u32) {
         if (index < self.map.items.len) {
             return self.map.items[index];
