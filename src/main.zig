@@ -47,7 +47,7 @@ fn solveInParallel(min: u32, max: u32) !void {
 
     {
         // Use a smaller number of threads to reduce contention
-        const num_threads = 1;
+        const num_threads = std.Thread.getCpuCount() catch 1;
         std.debug.print("Using {} threads\n", .{num_threads});
 
         var pool: std.Thread.Pool = undefined;
@@ -80,7 +80,7 @@ pub fn main() !void {
         try debug();
         return;
     }
-    const max = 89;
+    const max = 100;
     const min = 1;
     try solveInParallel(min, max);
 }
