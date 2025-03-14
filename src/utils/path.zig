@@ -225,30 +225,3 @@ fn getEnds(squareSumsMap: *Graph.SqaureSumsMap, max: u32) !std.ArrayList(u32) {
     }
     return ends;
 }
-
-fn getArrayMap(arrayList: std.ArrayList(u32)) !std.AutoHashMap(u32, u32) {
-    var map = std.AutoHashMap(u32, u32).init(allocator);
-    for (arrayList.items) |item| {
-        try map.put(item, item);
-    }
-    return map;
-}
-
-fn checkForIslandsAndThreeEnds(squareSums: *Graph.SqaureSumsMap, max: u32, path: *std.ArrayList(u32)) !bool {
-    var endCount: usize = 0;
-    var pathMap = try getArrayMap(path.*);
-    defer pathMap.deinit();
-
-    var i: u32 = 1;
-    while (i <= max) : (i += 1) {
-        if (pathMap.contains(i)) continue;
-        if (i < squareSums.map.items.len) {
-            const list = squareSums.map.items[i];
-            if (list.items.len == 1) {
-                endCount += 1;
-            }
-        }
-        if (endCount > 2) return true;
-    }
-    return false;
-}
