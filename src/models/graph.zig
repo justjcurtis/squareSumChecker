@@ -41,16 +41,17 @@ pub fn getSquareSumsMap(max: u32, squares: *std.AutoHashMap(u32, u32), allocator
 pub const SqaureSumsMap = struct {
     map: std.ArrayList(std.ArrayList(u32)) = undefined,
     max: u32 = 0,
+    allocator: std.mem.Allocator = undefined,
 
     pub fn init(self: *SqaureSumsMap, max: u32, squares: *std.AutoHashMap(u32, u32), allocator: std.mem.Allocator) !void {
         self.map = try getSquareSumsMap(max, squares, allocator);
         self.max = max;
+        self.allocator = allocator;
     }
 
     pub fn getClone(self: *SqaureSumsMap) !SqaureSumsMap {
-        var newMap = try std.ArrayList(std.ArrayList(u32)).initCapacity(std.heap.page_allocator, self.map.items.len);
+        var newMap = try std.ArrayList(std.ArrayList(u32)).initCapacity(self.allocator, self.map.items.len);
 
-        // Clone each inner ArrayList
         for (self.map.items) |list| {
             const clonedList = try list.clone();
             try newMap.append(clonedList);
@@ -62,75 +63,15 @@ pub const SqaureSumsMap = struct {
         };
     }
 
-    // A more efficient version that doesn't clone the entire structure
-    pub fn getEfficient(self: *SqaureSumsMap, allocator: std.mem.Allocator) !*SqaureSumsMap {
-        const newMap = try allocator.create(SqaureSumsMap);
-        newMap.* = SqaureSumsMap{
-            .map = self.map,
-            .max = self.max,
-        };
-        return newMap;
-    }
-
     pub fn get(self: *SqaureSumsMap, index: u32) std.ArrayList(u32) {
-        if (index < self.map.items.len) {
+        if (self.contains(index)) {
             return self.map.items[index];
         }
-        return std.ArrayList(u32).init(std.heap.page_allocator);
-    }
-
-    pub fn remove(self: *SqaureSumsMap, num: u32) void {
-        // For each list in the map
-        for (self.map.items) |*list| {
-            var len = list.items.len;
-            var isClean = true;
-            while (isClean) {
-                isClean = false;
-                for (0..len) |i| {
-                    if (i >= list.items.len) break;
-                    if (list.items[i] == num) {
-                        _ = list.swapRemove(i);
-                        len -= 1;
-                        isClean = true;
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    pub fn optionCount(self: *SqaureSumsMap, num: u32) u32 {
-        if (num >= self.map.items.len) return 0;
-        return @as(u32, @intCast(self.map.items[num].items.len));
-    }
-
-    // Custom iterator for the ArrayList-based implementation
-    pub const Iterator = struct {
-        map: *std.ArrayList(std.ArrayList(u32)),
-        index: usize = 0,
-
-        pub fn next(self: *Iterator) ?struct { key: u32, value: *std.ArrayList(u32) } {
-            while (self.index < self.map.items.len) {
-                const currentIndex = self.index;
-                self.index += 1;
-
-                if (currentIndex > 0) { // Skip index 0 as it's not used
-                    return .{
-                        .key = @intCast(currentIndex),
-                        .value = &self.map.items[currentIndex],
-                    };
-                }
-            }
-            return null;
-        }
-    };
-
-    pub fn iterator(self: *SqaureSumsMap) Iterator {
-        return Iterator{ .map = &self.map };
+        unreachable;
     }
 
     pub fn contains(self: *SqaureSumsMap, index: u32) bool {
-        return index < self.map.items.len and self.map.items[index].items.len > 0;
+        return index < self.map.items.len and index > 0;
     }
 
     pub fn deinit(self: *SqaureSumsMap) void {

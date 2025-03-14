@@ -5,7 +5,7 @@ const PathError = error{
     NotFound,
 };
 
-const allocator = std.heap.page_allocator;
+const allocator = std.heap.c_allocator;
 
 pub fn findPath(squares: *std.AutoHashMap(u32, u32), max: u32, mutex: *std.Thread.Mutex, results: *std.AutoHashMap(u32, std.ArrayList(u32))) void {
     var squareSums = Graph.SqaureSumsMap{};
@@ -14,12 +14,11 @@ pub fn findPath(squares: *std.AutoHashMap(u32, u32), max: u32, mutex: *std.Threa
     };
     defer squareSums.deinit();
 
-    // Use the optimized path finding algorithm
     const result = findPathOptimized(&squareSums, max) catch {
         return;
     };
 
-    std.debug.print("Found path from {} to {}\n", .{ 1, max });
+    // std.debug.print("Found path from {} to {}\n", .{ 1, max });
 
     mutex.lock();
     results.put(max, result) catch {
@@ -49,7 +48,6 @@ fn printPath(path: []u32) void {
     std.debug.print("\n", .{});
 }
 
-// Tracking structure to avoid repeated allocations
 const PathState = struct {
     used: []bool,
     path: []u32,
@@ -103,12 +101,10 @@ const PathState = struct {
     }
 };
 
-// Optimized version that avoids repeated cloning
 pub fn findPathOptimized(squareSums: *Graph.SqaureSumsMap, max: u32) !std.ArrayList(u32) {
     var state = try PathState.init(max);
     defer state.deinit();
 
-    // Try starting with each end point first (more likely to succeed)
     var ends = try getEnds(squareSums, max);
     defer ends.deinit();
 
@@ -127,15 +123,14 @@ pub fn findPathOptimized(squareSums: *Graph.SqaureSumsMap, max: u32) !std.ArrayL
         return PathError.NotFound;
     }
 
-    // Create a list of all numbers and sort them by fewest connections
     var allNumbers = std.ArrayList(u32).init(allocator);
     defer allNumbers.deinit();
-    for (1..max + 1) |i| {
-        try allNumbers.append(@as(u32, @intCast(i)));
+    var i: u32 = 1;
+    while (i <= max) : (i += 1) {
+        try allNumbers.append(i);
     }
     std.mem.sort(u32, allNumbers.items, squareSums, comptime optionSorter);
 
-    // Try starting with each number in order of fewest connections
     for (allNumbers.items) |num| {
         state.addToPath(num);
         if (try findPathRecursiveOptimized(squareSums, max, &state)) {
@@ -147,21 +142,23 @@ pub fn findPathOptimized(squareSums: *Graph.SqaureSumsMap, max: u32) !std.ArrayL
     return PathError.NotFound;
 }
 
-// Optimized recursive function that avoids cloning
 fn findPathRecursiveOptimized(squareSums: *Graph.SqaureSumsMap, max: u32, state: *PathState) !bool {
-    if (state.path_len == max) {
-        return true;
-    }
-
     const tip = state.path[state.path_len - 1];
     const options = squareSums.get(tip);
 
-    // Early termination if no options
     if (options.items.len == 0) {
         return false;
     }
 
-    // Filter out already used options
+    if (state.path_len == max - 1) {
+        state.addToPath(options.items[0]);
+        return true;
+    }
+
+    if (try fastEndpointCheck(squareSums, max, state)) {
+        return false;
+    }
+
     var validOptions = std.ArrayList(u32).init(allocator);
     defer validOptions.deinit();
 
@@ -171,12 +168,10 @@ fn findPathRecursiveOptimized(squareSums: *Graph.SqaureSumsMap, max: u32, state:
         }
     }
 
-    // Early termination if no valid options
     if (validOptions.items.len == 0) {
         return false;
     }
 
-    // Sort options by fewest connections (most constrained first)
     std.mem.sort(u32, validOptions.items, squareSums, comptime optionSorter);
 
     if (state.path_len == max - 1 and validOptions.items.len == 1) {
@@ -184,35 +179,26 @@ fn findPathRecursiveOptimized(squareSums: *Graph.SqaureSumsMap, max: u32, state:
         return true;
     }
 
-    // Try each option
     for (validOptions.items) |option| {
-        // Check if this creates a situation with more than 2 endpoints
-        if (try fastEndpointCheck(squareSums, max, state)) {
-            continue;
-        }
-
         state.addToPath(option);
-
         if (try findPathRecursiveOptimized(squareSums, max, state)) {
             return true;
         }
-
         _ = state.removeFromPath();
     }
 
     return false;
 }
 
-// Fast endpoint check that doesn't allocate new memory
 fn fastEndpointCheck(squareSums: *Graph.SqaureSumsMap, max: u32, state: *PathState) !bool {
     var endCount: usize = 0;
 
-    for (1..max + 1) |i| {
-        const num = @as(u32, @intCast(i));
-        if (state.isUsed(num)) continue;
+    var i: u32 = 1;
+    while (i <= max) : (i += 1) {
+        if (state.isUsed(i)) continue;
 
         var availableConnections: usize = 0;
-        const connections = squareSums.get(num);
+        const connections = squareSums.get(i);
 
         for (connections.items) |conn| {
             if (!state.isUsed(conn)) {
@@ -224,7 +210,6 @@ fn fastEndpointCheck(squareSums: *Graph.SqaureSumsMap, max: u32, state: *PathSta
             endCount += 1;
             if (endCount > 2) return true;
         } else if (availableConnections == 0) {
-            // Isolated node - can't be part of solution
             return true;
         }
     }
@@ -234,11 +219,14 @@ fn fastEndpointCheck(squareSums: *Graph.SqaureSumsMap, max: u32, state: *PathSta
 
 pub fn getEnds(squareSumsMap: *Graph.SqaureSumsMap, max: u32) !std.ArrayList(u32) {
     var ends = std.ArrayList(u32).init(allocator);
-    for (1..max + 1) |i| {
-        const num = @as(u32, @intCast(i));
-        const list = squareSumsMap.get(num);
+    var i: u32 = 1;
+    while (i <= max) : (i += 1) {
+        const list = squareSumsMap.get(i);
         if (list.items.len == 1) {
-            try ends.append(num);
+            try ends.append(i);
+        }
+        if (list.items.len == 0) {
+            return PathError.NotFound;
         }
     }
     return ends;

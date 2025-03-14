@@ -2,7 +2,7 @@ const std = @import("std");
 const Graph = @import("models/graph.zig");
 const PathUtils = @import("utils/path.zig");
 
-const allocator = std.heap.page_allocator;
+const allocator = std.heap.c_allocator;
 
 fn printSquareSumsMap(squareSumsMap: *Graph.SqaureSumsMap, title: []const u8) void {
     std.debug.print("{s}: \n", .{title});
@@ -31,7 +31,7 @@ fn debug() !void {
     std.debug.print("\n", .{});
 
     var squareSumsMap = Graph.SqaureSumsMap{};
-    try squareSumsMap.init(100, squares, std.heap.page_allocator);
+    try squareSumsMap.init(100, squares, allocator);
 
     var clone = try squareSumsMap.getClone();
     clone.remove(1);
@@ -40,27 +40,11 @@ fn debug() !void {
     printSquareSumsMap(&clone, "Clone");
 }
 
-fn solveInParallel(min: u32, max: u32) !void {
-    std.debug.print("Searching for path from {} to {}\n", .{ min, max });
-    var squares = try Graph.getSquares(max, allocator);
-    var results = std.AutoHashMap(u32, std.ArrayList(u32)).init(allocator);
-
-    {
-        // Use a smaller number of threads to reduce contention
-        const num_threads = std.Thread.getCpuCount() catch 1;
-        std.debug.print("Using {} threads\n", .{num_threads});
-
-        var pool: std.Thread.Pool = undefined;
-        try pool.init(std.Thread.Pool.Options{ .allocator = allocator, .n_jobs = num_threads });
-        defer pool.deinit();
-        var mutex = std.Thread.Mutex{};
-
-        for (min..max + 1) |index| {
-            const i = @as(u32, @intCast(index));
-            try pool.spawn(PathUtils.findPath, .{ &squares, i, &mutex, &results });
-        }
+fn printResults(results: *std.AutoHashMap(u32, std.ArrayList(u32))) void {
+    if (results.count() == 0) {
+        std.debug.print("No results found\n", .{});
+        return;
     }
-
     std.debug.print("Results: \n", .{});
     var resultsItr = results.iterator();
     while (resultsItr.next()) |kv| {
@@ -74,13 +58,41 @@ fn solveInParallel(min: u32, max: u32) !void {
     }
 }
 
+fn solveInParallel(min: u32, max: u32, results: *std.AutoHashMap(u32, std.ArrayList(u32))) !void {
+    std.debug.print("Searching for path from {} to {}\n", .{ min, max });
+    var squares = try Graph.getSquares(max, allocator);
+
+    {
+        // Use a smaller number of threads to reduce contention
+        const num_threads = std.Thread.getCpuCount() catch 1;
+        std.debug.print("Using {} threads\n", .{num_threads});
+
+        var mutex = std.Thread.Mutex{};
+        var pool: std.Thread.Pool = undefined;
+        try pool.init(std.Thread.Pool.Options{ .allocator = allocator, .n_jobs = num_threads });
+        defer pool.deinit();
+
+        for (min..max + 1) |index| {
+            const i = @as(u32, @intCast(index));
+            try pool.spawn(PathUtils.findPath, .{ &squares, i, &mutex, results });
+        }
+    }
+}
+
 pub fn main() !void {
     const debugMode = false;
     if (debugMode) {
         try debug();
         return;
     }
-    const max = 100;
+    const max = 89;
     const min = 1;
-    try solveInParallel(min, max);
+    var results = std.AutoHashMap(u32, std.ArrayList(u32)).init(allocator);
+
+    const start = std.time.nanoTimestamp();
+    try solveInParallel(min, max, &results);
+    const end = std.time.nanoTimestamp();
+    const elapsed = @as(f64, @floatFromInt(end - start)) / 1e9;
+    printResults(&results);
+    std.debug.print("\nTime elapsed: {d:.3}s\n", .{elapsed});
 }
