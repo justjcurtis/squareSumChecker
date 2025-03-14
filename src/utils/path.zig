@@ -19,7 +19,7 @@ pub fn findPath(squares: *std.AutoHashMap(u32, u32), max: u32, mutex: *std.Threa
         return;
     };
 
-    // std.debug.print("Found path from {} to {}\n", .{ 1, max });
+    std.debug.print("Found path from {} to {}\n", .{ 1, max });
 
     mutex.lock();
     results.put(max, result) catch {
@@ -60,13 +60,6 @@ const PathState = struct {
         };
     }
 
-    pub fn reset(self: *PathState) void {
-        for (0..self.max + 0) |i| {
-            self.used[i] = false;
-        }
-        self.path_len = 0;
-    }
-
     pub fn deinit(self: *PathState) void {
         allocator.free(self.used);
         allocator.free(self.path);
@@ -101,19 +94,19 @@ fn findPathOptimized(squareSums: *Graph.SqaureSumsMap, max: u32) !std.ArrayList(
     defer state.deinit();
 
     var ends = try getEnds(squareSums, max);
-    defer ends.deinit();
-
-    if (ends.items.len > 2) {
-        return PathError.NotFound;
+    const endsLen: u8 = if (ends[0] != 0) if (ends[1] != 0) 2 else 1 else 0;
+    if (endsLen == 2) {
+        std.mem.sort(u32, &ends, squareSums, comptime optionSorter);
     }
 
-    if (ends.items.len > 0) {
-        for (ends.items) |end| {
+    if (endsLen > 0) {
+        for (ends) |end| {
+            if (end == 0) continue;
             state.addToPath(end);
             if (try findPathRecursiveOptimized(squareSums, max, &state)) {
                 return state.getResult();
             }
-            _ = state.reset();
+            _ = state.removeFromPath();
         }
         return PathError.NotFound;
     }
@@ -132,7 +125,7 @@ fn findPathOptimized(squareSums: *Graph.SqaureSumsMap, max: u32) !std.ArrayList(
         if (try findPathRecursiveOptimized(squareSums, max, &state)) {
             return state.getResult();
         }
-        _ = state.reset();
+        _ = state.removeFromPath();
     }
 
     return PathError.NotFound;
@@ -211,13 +204,18 @@ fn fastEndpointCheck(squareSums: *Graph.SqaureSumsMap, max: u32, state: *PathSta
     return false;
 }
 
-fn getEnds(squareSumsMap: *Graph.SqaureSumsMap, max: u32) !std.ArrayList(u32) {
-    var ends = std.ArrayList(u32).init(allocator);
+fn getEnds(squareSumsMap: *Graph.SqaureSumsMap, max: u32) ![2]u32 {
+    var ends = [2]u32{ 0, 0 };
+    var count: u32 = 0;
     var i: u32 = 1;
     while (i <= max) : (i += 1) {
         const list = squareSumsMap.get(i);
         if (list.items.len == 1) {
-            try ends.append(i);
+            if (count == 2) {
+                return PathError.NotFound;
+            }
+            ends[count] = i;
+            count += 1;
         }
         if (list.items.len == 0) {
             return PathError.NotFound;
