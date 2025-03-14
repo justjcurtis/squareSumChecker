@@ -35,12 +35,6 @@ pub fn optionSorter(squareSumsMap: *Graph.SqaureSumsMap, a: u32, b: u32) bool {
     return aList.items.len < bList.items.len;
 }
 
-fn sortNextOptions(squareSumsMap: *Graph.SqaureSumsMap, nextOptions: *std.ArrayList(u32)) []u32 {
-    const slice = nextOptions.items;
-    std.mem.sort(u32, slice, squareSumsMap, comptime optionSorter);
-    return slice;
-}
-
 fn printPath(path: []u32) void {
     std.debug.print("{} - Path: ", .{path.len});
     for (path) |item| {
@@ -130,6 +124,7 @@ fn findPathOptimized(squareSums: *Graph.SqaureSumsMap, max: u32) !std.ArrayList(
     while (i <= max) : (i += 1) {
         try allNumbers.append(i);
     }
+
     std.mem.sort(u32, allNumbers.items, squareSums, comptime optionSorter);
 
     for (allNumbers.items) |num| {
