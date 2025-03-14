@@ -72,8 +72,8 @@ fn solveInParallel(min: u32, max: u32, results: *std.AutoHashMap(u32, std.ArrayL
         try pool.init(std.Thread.Pool.Options{ .allocator = allocator, .n_jobs = num_threads });
         defer pool.deinit();
 
-        for (min..max + 1) |index| {
-            const i = @as(u32, @intCast(index));
+        var i = min;
+        while (i <= max) : (i += 1) {
             try pool.spawn(PathUtils.findPath, .{ &squares, i, &mutex, results });
         }
     }

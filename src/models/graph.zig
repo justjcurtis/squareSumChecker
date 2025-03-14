@@ -1,4 +1,5 @@
 const std = @import("std");
+const PathUtils = @import("../utils/path.zig");
 
 pub fn getSquares(max: u32, allocator: std.mem.Allocator) !std.AutoHashMap(u32, u32) {
     var squares = std.AutoHashMap(u32, u32).init(allocator);
@@ -14,23 +15,20 @@ pub fn getSquares(max: u32, allocator: std.mem.Allocator) !std.AutoHashMap(u32, 
 }
 
 pub fn getSquareSumsMap(max: u32, squares: *std.AutoHashMap(u32, u32), allocator: std.mem.Allocator) !std.ArrayList(std.ArrayList(u32)) {
-    // Create an ArrayList of ArrayLists, with index 0 being unused (since we start at 1)
     var squareSumsMap = try std.ArrayList(std.ArrayList(u32)).initCapacity(allocator, max + 1);
 
-    // Initialize all inner ArrayLists
     for (0..max + 1) |_| {
         try squareSumsMap.append(std.ArrayList(u32).init(allocator));
     }
 
-    // Fill the connections
-    for (1..max) |i| {
-        const a: u32 = @as(u32, @intCast(i));
-        for (i + 1..max + 1) |j| {
-            const b: u32 = @as(u32, @intCast(j));
-            const sum = a + b;
+    var i: u32 = 1;
+    while (i < max) : (i += 1) {
+        var j: u32 = i + 1;
+        while (j <= max) : (j += 1) {
+            const sum = i + j;
             if (squares.contains(sum)) {
-                try squareSumsMap.items[a].append(b);
-                try squareSumsMap.items[b].append(a);
+                try squareSumsMap.items[i].append(j);
+                try squareSumsMap.items[j].append(i);
             }
         }
     }
@@ -47,6 +45,14 @@ pub const SqaureSumsMap = struct {
         self.map = try getSquareSumsMap(max, squares, allocator);
         self.max = max;
         self.allocator = allocator;
+    }
+
+    pub fn sort(self: *SqaureSumsMap) void {
+        var i: u32 = 0;
+        while (i < self.map.items.len) : (i += 1) {
+            const slice = self.map.items[i];
+            std.mem.sort(u32, slice.items, self, comptime PathUtils.optionSorter);
+        }
     }
 
     pub fn getClone(self: *SqaureSumsMap) !SqaureSumsMap {

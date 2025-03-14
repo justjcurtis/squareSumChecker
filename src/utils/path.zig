@@ -12,6 +12,7 @@ pub fn findPath(squares: *std.AutoHashMap(u32, u32), max: u32, mutex: *std.Threa
     squareSums.init(max, squares, allocator) catch {
         return;
     };
+    squareSums.sort();
     defer squareSums.deinit();
 
     const result = findPathOptimized(&squareSums, max) catch {
@@ -28,7 +29,7 @@ pub fn findPath(squares: *std.AutoHashMap(u32, u32), max: u32, mutex: *std.Threa
     mutex.unlock();
 }
 
-fn optionSorter(squareSumsMap: *Graph.SqaureSumsMap, a: u32, b: u32) bool {
+pub fn optionSorter(squareSumsMap: *Graph.SqaureSumsMap, a: u32, b: u32) bool {
     const aList = squareSumsMap.get(a);
     const bList = squareSumsMap.get(b);
     return aList.items.len < bList.items.len;
@@ -101,7 +102,7 @@ const PathState = struct {
     }
 };
 
-pub fn findPathOptimized(squareSums: *Graph.SqaureSumsMap, max: u32) !std.ArrayList(u32) {
+fn findPathOptimized(squareSums: *Graph.SqaureSumsMap, max: u32) !std.ArrayList(u32) {
     var state = try PathState.init(max);
     defer state.deinit();
 
@@ -172,8 +173,6 @@ fn findPathRecursiveOptimized(squareSums: *Graph.SqaureSumsMap, max: u32, state:
         return false;
     }
 
-    std.mem.sort(u32, validOptions.items, squareSums, comptime optionSorter);
-
     if (state.path_len == max - 1 and validOptions.items.len == 1) {
         state.addToPath(validOptions.items[0]);
         return true;
@@ -217,7 +216,7 @@ fn fastEndpointCheck(squareSums: *Graph.SqaureSumsMap, max: u32, state: *PathSta
     return false;
 }
 
-pub fn getEnds(squareSumsMap: *Graph.SqaureSumsMap, max: u32) !std.ArrayList(u32) {
+fn getEnds(squareSumsMap: *Graph.SqaureSumsMap, max: u32) !std.ArrayList(u32) {
     var ends = std.ArrayList(u32).init(allocator);
     var i: u32 = 1;
     while (i <= max) : (i += 1) {
@@ -232,7 +231,7 @@ pub fn getEnds(squareSumsMap: *Graph.SqaureSumsMap, max: u32) !std.ArrayList(u32
     return ends;
 }
 
-pub fn getArrayMap(arrayList: std.ArrayList(u32)) !std.AutoHashMap(u32, u32) {
+fn getArrayMap(arrayList: std.ArrayList(u32)) !std.AutoHashMap(u32, u32) {
     var map = std.AutoHashMap(u32, u32).init(allocator);
     for (arrayList.items) |item| {
         try map.put(item, item);
@@ -240,7 +239,7 @@ pub fn getArrayMap(arrayList: std.ArrayList(u32)) !std.AutoHashMap(u32, u32) {
     return map;
 }
 
-pub fn checkForIslandsAndThreeEnds(squareSums: *Graph.SqaureSumsMap, max: u32, path: *std.ArrayList(u32)) !bool {
+fn checkForIslandsAndThreeEnds(squareSums: *Graph.SqaureSumsMap, max: u32, path: *std.ArrayList(u32)) !bool {
     var endCount: usize = 0;
     var pathMap = try getArrayMap(path.*);
     defer pathMap.deinit();
