@@ -85,7 +85,7 @@ pub fn main() !void {
         try debug();
         return;
     }
-    const max = 89;
+    const max = 100;
     const min = 1;
     var results = std.AutoHashMap(u32, std.ArrayList(u32)).init(allocator);
 

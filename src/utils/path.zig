@@ -132,19 +132,14 @@ fn findPathOptimized(squareSums: *Graph.SqaureSumsMap, max: u32) !std.ArrayList(
 }
 
 fn findPathRecursiveOptimized(squareSums: *Graph.SqaureSumsMap, max: u32, state: *PathState) !bool {
+    if (state.path_len == max) {
+        return true;
+    }
+
     const tip = state.path[state.path_len - 1];
     const options = squareSums.get(tip);
 
     if (options.items.len == 0) {
-        return false;
-    }
-
-    if (state.path_len == max - 1) {
-        state.addToPath(options.items[0]);
-        return true;
-    }
-
-    if (try fastEndpointCheck(squareSums, max, state)) {
         return false;
     }
 
@@ -161,9 +156,8 @@ fn findPathRecursiveOptimized(squareSums: *Graph.SqaureSumsMap, max: u32, state:
         return false;
     }
 
-    if (state.path_len == max - 1 and validOptions.items.len == 1) {
-        state.addToPath(validOptions.items[0]);
-        return true;
+    if (validOptions.items.len > 1 and try fastEndpointCheck(squareSums, max, state)) {
+        return false;
     }
 
     for (validOptions.items) |option| {
