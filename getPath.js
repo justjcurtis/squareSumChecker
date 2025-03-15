@@ -49,7 +49,9 @@ function findRoute(g) {
             if (path !== undefined) return path
         }
     } else {
-        for (let i = 1; i <= g.max; i++) {
+        const nums = new Array(g.max).fill(0).map((_, i) => i + 1)
+        nums.sort((a, b) => squareSumsMap[a].length - squareSumsMap[b].length)
+        for (const i of nums) {
             const path = recursiveRoute([i], squareSumsMap, g.max)
             if (path !== undefined) return path
         }
