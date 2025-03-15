@@ -18,8 +18,6 @@ pub fn findPath(squares: *std.AutoHashMap(u32, u32), max: u32, mutex: *std.Threa
         return;
     };
 
-    // std.debug.print("Found path from {} to {}\n", .{ 1, max });
-
     mutex.lock();
     results.put(max, result) catch {
         mutex.unlock();
@@ -28,7 +26,6 @@ pub fn findPath(squares: *std.AutoHashMap(u32, u32), max: u32, mutex: *std.Threa
     mutex.unlock();
 }
 
-// Define a new struct to hold both the squareSumsMap and used array
 pub const SortContext = struct {
     squareSumsMap: *Graph.SqaureSumsMap,
     used: []bool,
@@ -40,7 +37,6 @@ pub const SortContext = struct {
         };
     }
 
-    // Helper to count valid connections (not already used)
     pub fn countValidConnections(self: *const SortContext, num: u32) usize {
         const connections = self.squareSumsMap.get(num);
         if (self.used.len == 0) {
@@ -61,14 +57,6 @@ pub fn optionSorter(context: *const SortContext, a: u32, b: u32) bool {
     const aValidConnections = context.countValidConnections(a);
     const bValidConnections = context.countValidConnections(b);
     return aValidConnections < bValidConnections;
-}
-
-fn printPath(path: []u32) void {
-    std.debug.print("{} - Path: ", .{path.len});
-    for (path) |item| {
-        std.debug.print("{d} ", .{item});
-    }
-    std.debug.print("\n", .{});
 }
 
 const PathState = struct {
@@ -124,7 +112,6 @@ fn findPathOptimized(squareSums: *Graph.SqaureSumsMap, max: u32) !std.ArrayList(
     var ends = try getEnds(squareSums, max);
     const endsLen: u8 = if (ends[0] != 0) if (ends[1] != 0) 2 else 1 else 0;
     if (endsLen == 2) {
-        // Create a SortContext with an empty used array
         var emptyUsed = [_]bool{};
         var sortContext = SortContext.init(squareSums, &emptyUsed);
         std.mem.sort(u32, &ends, &sortContext, comptime optionSorter);
@@ -149,7 +136,6 @@ fn findPathOptimized(squareSums: *Graph.SqaureSumsMap, max: u32) !std.ArrayList(
         try allNumbers.append(i);
     }
 
-    // Create a SortContext with an empty used array
     var emptyUsed = [_]bool{};
     var sortContext = SortContext.init(squareSums, &emptyUsed);
     std.mem.sort(u32, allNumbers.items, &sortContext, comptime optionSorter);
@@ -186,7 +172,6 @@ fn findPathRecursiveOptimized(squareSums: *Graph.SqaureSumsMap, max: u32, state:
         }
     }
 
-    // Create a SortContext with the current state's used array
     var sortContext = SortContext.init(squareSums, state.used);
     std.mem.sort(u32, validOptions.items, &sortContext, comptime optionSorter);
 

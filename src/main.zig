@@ -2,70 +2,41 @@ const std = @import("std");
 const Graph = @import("models/graph.zig");
 const PathUtils = @import("utils/path.zig");
 
+const stdout = std.io.getStdOut().writer();
 const allocator = std.heap.c_allocator;
 
-fn printSquareSumsMap(squareSumsMap: *Graph.SqaureSumsMap, title: []const u8) void {
-    std.debug.print("{s}: \n", .{title});
-    var squareSumsMapItr = squareSumsMap.iterator();
-    while (squareSumsMapItr.next()) |entry| {
-        const key = entry.key;
-        const value = entry.value;
-        std.debug.print("\t{d}: ", .{key});
-        for (value.items) |item| {
-            std.debug.print("{d} ", .{item});
-        }
-        std.debug.print("\n", .{});
-    }
-    std.debug.print("\n", .{});
+fn print(comptime fmt: []const u8, args: anytype) void {
+    _ = stdout.print(fmt, args) catch return;
 }
 
-fn debug() !void {
-    var squares = try Graph.getSquares(100, allocator);
-
-    std.debug.print("Squares from main: ", .{});
-    var squaresItr = squares.valueIterator();
-    while (squaresItr.next()) |valuePtr| {
-        const value = valuePtr.*;
-        std.debug.print("{d} ", .{value});
-    }
-    std.debug.print("\n", .{});
-
-    var squareSumsMap = Graph.SqaureSumsMap{};
-    try squareSumsMap.init(100, squares, allocator);
-
-    var clone = try squareSumsMap.getClone();
-    clone.remove(1);
-
-    printSquareSumsMap(&squareSumsMap, "Square Sums Map");
-    printSquareSumsMap(&clone, "Clone");
-}
-
-fn printResults(results: *std.AutoHashMap(u32, std.ArrayList(u32))) void {
+fn printResults(results: *std.AutoHashMap(u32, std.ArrayList(u32)), min: u32, max: u32) void {
     if (results.count() == 0) {
-        std.debug.print("No results found\n", .{});
+        print("No results found\n", .{});
         return;
     }
-    std.debug.print("Results: \n", .{});
-    var resultsItr = results.iterator();
-    while (resultsItr.next()) |kv| {
-        const key = kv.key_ptr.*;
-        const value = kv.value_ptr;
-        std.debug.print("{d}: ", .{key});
-        for (value.items) |item| {
-            std.debug.print("{d} ", .{item});
+    print("Results: \n", .{});
+    var index = min;
+    while (index <= max) : (index += 1) {
+        if (!results.contains(index)) {
+            continue;
         }
-        std.debug.print("\n", .{});
+        const value = results.get(index).?;
+        print("{d}: ", .{index});
+        for (value.items) |item| {
+            print("{d} ", .{item});
+        }
+        print("\n", .{});
     }
 }
 
 fn solveInParallel(min: u32, max: u32, results: *std.AutoHashMap(u32, std.ArrayList(u32))) !void {
-    std.debug.print("Searching for path from {} to {}\n", .{ min, max });
+    print("Searching for path from {} to {}\n", .{ min, max });
     var squares = try Graph.getSquares(max, allocator);
-
+    const amnt = max - min + 1;
     {
         // Use a smaller number of threads to reduce contention
-        const num_threads = std.Thread.getCpuCount() catch 1;
-        std.debug.print("Using {} threads\n", .{num_threads});
+        const num_threads = @min(std.Thread.getCpuCount() catch 1, amnt);
+        print("Using {} threads\n", .{num_threads});
 
         var mutex = std.Thread.Mutex{};
         var pool: std.Thread.Pool = undefined;
@@ -79,20 +50,41 @@ fn solveInParallel(min: u32, max: u32, results: *std.AutoHashMap(u32, std.ArrayL
     }
 }
 
-pub fn main() !void {
-    const debugMode = false;
-    if (debugMode) {
-        try debug();
-        return;
+fn getArgs() !struct { min: u32, max: u32 } {
+    const args = try std.process.argsAlloc(allocator);
+    defer std.process.argsFree(allocator, args);
+
+    var min: u32 = 1;
+    var max: u32 = 1000;
+
+    if (args.len == 2) {
+        const value = try std.fmt.parseInt(u32, args[1], 10);
+        min = value;
+        max = value;
+    } else if (args.len == 3) {
+        min = try std.fmt.parseInt(u32, args[1], 10);
+        max = try std.fmt.parseInt(u32, args[2], 10);
+        if (min > max) {
+            return error.MinGreaterThanMax;
+        }
+    } else if (args.len > 3) {
+        return error.TooManyArguments;
     }
-    const max = 1000;
-    const min = 1;
+
+    return .{ .min = min, .max = max };
+}
+
+pub fn main() !void {
+    const args = try getArgs();
+    const min = args.min;
+    const max = args.max;
+
     var results = std.AutoHashMap(u32, std.ArrayList(u32)).init(allocator);
 
     const start = std.time.nanoTimestamp();
     try solveInParallel(min, max, &results);
     const end = std.time.nanoTimestamp();
     const elapsed = @as(f64, @floatFromInt(end - start)) / 1e9;
-    printResults(&results);
-    std.debug.print("\nTime elapsed: {d:.3}s\n", .{elapsed});
+    printResults(&results, min, max);
+    print("\nTime elapsed: {d:.3}s\n", .{elapsed});
 }
