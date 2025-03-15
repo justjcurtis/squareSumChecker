@@ -121,6 +121,27 @@ fn findPathOptimized(squareSums: *Graph.SqaureSumsMap, max: u32) !std.ArrayList(
     var state = try PathState.init(max);
     defer state.deinit();
 
+    var ends = try getEnds(squareSums, max);
+    const endsLen: u8 = if (ends[0] != 0) if (ends[1] != 0) 2 else 1 else 0;
+    if (endsLen == 2) {
+        // Create a SortContext with an empty used array
+        var emptyUsed = [_]bool{};
+        var sortContext = SortContext.init(squareSums, &emptyUsed);
+        std.mem.sort(u32, &ends, &sortContext, comptime optionSorter);
+    }
+
+    if (endsLen > 0) {
+        for (ends) |end| {
+            if (end == 0) continue;
+            state.addToPath(end);
+            if (try findPathRecursiveOptimized(squareSums, max, &state)) {
+                return state.getResult();
+            }
+            _ = state.removeFromPath();
+        }
+        return PathError.NotFound;
+    }
+
     var allNumbers = std.ArrayList(u32).init(allocator);
     defer allNumbers.deinit();
     var i: u32 = 1;
@@ -213,4 +234,24 @@ fn fastEndpointCheck(squareSums: *Graph.SqaureSumsMap, max: u32, state: *PathSta
     }
 
     return false;
+}
+
+fn getEnds(squareSumsMap: *Graph.SqaureSumsMap, max: u32) ![2]u32 {
+    var ends = [2]u32{ 0, 0 };
+    var count: u32 = 0;
+    var i: u32 = 1;
+    while (i <= max) : (i += 1) {
+        const list = squareSumsMap.get(i);
+        if (list.items.len == 1) {
+            if (count == 2) {
+                return PathError.NotFound;
+            }
+            ends[count] = i;
+            count += 1;
+        }
+        if (list.items.len == 0) {
+            return PathError.NotFound;
+        }
+    }
+    return ends;
 }
