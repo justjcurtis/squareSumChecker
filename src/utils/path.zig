@@ -12,14 +12,13 @@ pub fn findPath(squares: *std.AutoHashMap(u32, u32), max: u32, mutex: *std.Threa
     squareSums.init(max, squares, allocator) catch {
         return;
     };
-    squareSums.sort();
     defer squareSums.deinit();
 
     const result = findPathOptimized(&squareSums, max) catch {
         return;
     };
 
-    std.debug.print("Found path from {} to {}\n", .{ 1, max });
+    // std.debug.print("Found path from {} to {}\n", .{ 1, max });
 
     mutex.lock();
     results.put(max, result) catch {
@@ -29,10 +28,39 @@ pub fn findPath(squares: *std.AutoHashMap(u32, u32), max: u32, mutex: *std.Threa
     mutex.unlock();
 }
 
-pub fn optionSorter(squareSumsMap: *Graph.SqaureSumsMap, a: u32, b: u32) bool {
-    const aList = squareSumsMap.get(a);
-    const bList = squareSumsMap.get(b);
-    return aList.items.len < bList.items.len;
+// Define a new struct to hold both the squareSumsMap and used array
+pub const SortContext = struct {
+    squareSumsMap: *Graph.SqaureSumsMap,
+    used: []bool,
+
+    pub fn init(squareSumsMap: *Graph.SqaureSumsMap, used: []bool) SortContext {
+        return SortContext{
+            .squareSumsMap = squareSumsMap,
+            .used = used,
+        };
+    }
+
+    // Helper to count valid connections (not already used)
+    pub fn countValidConnections(self: *const SortContext, num: u32) usize {
+        const connections = self.squareSumsMap.get(num);
+        if (self.used.len == 0) {
+            return connections.items.len;
+        }
+
+        var count: usize = 0;
+        for (connections.items) |conn| {
+            if (!self.used[conn]) {
+                count += 1;
+            }
+        }
+        return count;
+    }
+};
+
+pub fn optionSorter(context: *const SortContext, a: u32, b: u32) bool {
+    const aValidConnections = context.countValidConnections(a);
+    const bValidConnections = context.countValidConnections(b);
+    return aValidConnections < bValidConnections;
 }
 
 fn printPath(path: []u32) void {
@@ -93,24 +121,6 @@ fn findPathOptimized(squareSums: *Graph.SqaureSumsMap, max: u32) !std.ArrayList(
     var state = try PathState.init(max);
     defer state.deinit();
 
-    var ends = try getEnds(squareSums, max);
-    const endsLen: u8 = if (ends[0] != 0) if (ends[1] != 0) 2 else 1 else 0;
-    if (endsLen == 2) {
-        std.mem.sort(u32, &ends, squareSums, comptime optionSorter);
-    }
-
-    if (endsLen > 0) {
-        for (ends) |end| {
-            if (end == 0) continue;
-            state.addToPath(end);
-            if (try findPathRecursiveOptimized(squareSums, max, &state)) {
-                return state.getResult();
-            }
-            _ = state.removeFromPath();
-        }
-        return PathError.NotFound;
-    }
-
     var allNumbers = std.ArrayList(u32).init(allocator);
     defer allNumbers.deinit();
     var i: u32 = 1;
@@ -118,7 +128,10 @@ fn findPathOptimized(squareSums: *Graph.SqaureSumsMap, max: u32) !std.ArrayList(
         try allNumbers.append(i);
     }
 
-    std.mem.sort(u32, allNumbers.items, squareSums, comptime optionSorter);
+    // Create a SortContext with an empty used array
+    var emptyUsed = [_]bool{};
+    var sortContext = SortContext.init(squareSums, &emptyUsed);
+    std.mem.sort(u32, allNumbers.items, &sortContext, comptime optionSorter);
 
     for (allNumbers.items) |num| {
         state.addToPath(num);
@@ -151,6 +164,10 @@ fn findPathRecursiveOptimized(squareSums: *Graph.SqaureSumsMap, max: u32, state:
             try validOptions.append(option);
         }
     }
+
+    // Create a SortContext with the current state's used array
+    var sortContext = SortContext.init(squareSums, state.used);
+    std.mem.sort(u32, validOptions.items, &sortContext, comptime optionSorter);
 
     if (validOptions.items.len == 0) {
         return false;
@@ -196,24 +213,4 @@ fn fastEndpointCheck(squareSums: *Graph.SqaureSumsMap, max: u32, state: *PathSta
     }
 
     return false;
-}
-
-fn getEnds(squareSumsMap: *Graph.SqaureSumsMap, max: u32) ![2]u32 {
-    var ends = [2]u32{ 0, 0 };
-    var count: u32 = 0;
-    var i: u32 = 1;
-    while (i <= max) : (i += 1) {
-        const list = squareSumsMap.get(i);
-        if (list.items.len == 1) {
-            if (count == 2) {
-                return PathError.NotFound;
-            }
-            ends[count] = i;
-            count += 1;
-        }
-        if (list.items.len == 0) {
-            return PathError.NotFound;
-        }
-    }
-    return ends;
 }

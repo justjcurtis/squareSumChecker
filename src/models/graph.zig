@@ -47,14 +47,6 @@ pub const SqaureSumsMap = struct {
         self.allocator = allocator;
     }
 
-    pub fn sort(self: *SqaureSumsMap) void {
-        var i: u32 = 0;
-        while (i < self.map.items.len) : (i += 1) {
-            const slice = self.map.items[i];
-            std.mem.sort(u32, slice.items, self, comptime PathUtils.optionSorter);
-        }
-    }
-
     pub fn getClone(self: *SqaureSumsMap) !SqaureSumsMap {
         var newMap = try std.ArrayList(std.ArrayList(u32)).initCapacity(self.allocator, self.map.items.len);
 
