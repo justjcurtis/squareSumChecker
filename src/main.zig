@@ -34,7 +34,6 @@ fn solveInParallel(min: u32, max: u32, results: *std.AutoHashMap(u32, std.ArrayL
     var squares = try Graph.getSquares(max, allocator);
     const amnt = max - min + 1;
     {
-        // Use a smaller number of threads to reduce contention
         const num_threads = @min(std.Thread.getCpuCount() catch 1, amnt);
         print("Using {} threads\n", .{num_threads});
 
