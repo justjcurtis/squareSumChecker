@@ -65,7 +65,7 @@ pub const SqaureSumsMap = struct {
         if (self.contains(index)) {
             return self.map.items[index];
         }
-        unreachable;
+        std.debug.panic("Index out of bounds", .{});
     }
 
     pub fn contains(self: *SqaureSumsMap, index: u32) bool {

@@ -5,7 +5,7 @@ const PathUtils = @import("utils/path.zig");
 const stdout = std.io.getStdOut().writer();
 const allocator = std.heap.c_allocator;
 
-fn print(comptime fmt: []const u8, args: anytype) void {
+pub fn print(comptime fmt: []const u8, args: anytype) void {
     _ = stdout.print(fmt, args) catch return;
 }
 
@@ -18,9 +18,15 @@ fn printResults(results: *std.AutoHashMap(u32, std.ArrayList(u32)), min: u32, ma
     var index = min;
     while (index <= max) : (index += 1) {
         if (!results.contains(index)) {
+            if (index >= 25) {
+                std.debug.panic("No result found for {}", .{index});
+            }
             continue;
         }
         const value = results.get(index).?;
+        if (value.items.len != index) {
+            std.debug.panic("Invalid result for {}", .{index});
+        }
         print("{d}: ", .{index});
         for (value.items) |item| {
             print("{d} ", .{item});
@@ -37,6 +43,10 @@ fn solveInParallel(min: u32, max: u32, results: *std.AutoHashMap(u32, std.ArrayL
         const num_threads = @min(std.Thread.getCpuCount() catch 1, amnt);
         print("Using {} threads\n", .{num_threads});
 
+        const WaitGroup = std.Thread.WaitGroup;
+        var wait_group: WaitGroup = undefined;
+        wait_group.reset();
+
         var mutex = std.Thread.Mutex{};
         var pool: std.Thread.Pool = undefined;
         try pool.init(std.Thread.Pool.Options{ .allocator = allocator, .n_jobs = num_threads });
@@ -44,8 +54,9 @@ fn solveInParallel(min: u32, max: u32, results: *std.AutoHashMap(u32, std.ArrayL
 
         var i = min;
         while (i <= max) : (i += 1) {
-            try pool.spawn(PathUtils.findPath, .{ &squares, i, &mutex, results });
+            pool.spawnWg(&wait_group, PathUtils.findPath, .{ &squares, i, &mutex, results });
         }
+        pool.waitAndWork(&wait_group);
     }
 }
 
